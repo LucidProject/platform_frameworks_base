@@ -244,6 +244,10 @@ public class ActivityLaunchAnimator {
         }
 
         private void setExpandAnimationRunning(boolean running) {
+            if (running)
+                mNotificationPanel.hideDismissAnimate();
+            else
+                mNotificationPanel.handleDismissAllVisibility();
             mNotificationPanel.setLaunchingNotification(running);
             mSourceNotification.setExpandAnimationRunning(running);
             mStatusBarWindow.setExpandAnimationRunning(running);

@@ -57,7 +57,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityManager;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.logging.MetricsLogger;
@@ -239,7 +243,8 @@ public class NotificationPanelView extends PanelView implements
     protected FrameLayout mQsFrame;
     @VisibleForTesting
     protected KeyguardStatusView mKeyguardStatusView;
-    private View mQsNavbarScrim;
+    private ImageView mDismissAllButton;
+    private boolean mDismissShow;
     protected NotificationsQuickSettingsContainer mNotificationContainerParent;
     protected NotificationStackScrollLayout mNotificationStackScroller;
     private boolean mAnimateNextPositionUpdate;
@@ -523,7 +528,7 @@ public class NotificationPanelView extends PanelView implements
         mNotificationStackScroller.setOnEmptySpaceClickListener(this);
         addTrackingHeadsUpListener(mNotificationStackScroller::setTrackingHeadsUp);
         mKeyguardBottomArea = findViewById(R.id.keyguard_bottom_area);
-        mQsNavbarScrim = findViewById(R.id.qs_navbar_scrim);
+        mDismissAllButton = findViewById(R.id.clear_notifications);
         mLastOrientation = getResources().getConfiguration().orientation;
         mPulseLightsView = (NotificationLightsView) findViewById(R.id.lights_container);
 
@@ -559,6 +564,10 @@ public class NotificationPanelView extends PanelView implements
         mUpdateMonitor.registerCallback(mKeyguardUpdateCallback);
         // Theme might have changed between inflating this view and attaching it to the window, so
         // force a call to onThemeChanged
+        mDismissAllButton.setOnClickListener(v -> {
+            mNotificationStackScroller.clearNotifications(ROWS_ALL, false);
+            clearNotificationEffects();
+        });
         onThemeChanged();
     }
 
@@ -992,6 +1001,7 @@ public class NotificationPanelView extends PanelView implements
             mQsExpansionAnimator.cancel();
             setQsExpansion(height);
         }
+        hideDismissAnimate();
         flingSettings(0 /* vel */, animateAway ? FLING_HIDE : FLING_COLLAPSE);
     }
 
@@ -1797,10 +1807,7 @@ public class NotificationPanelView extends PanelView implements
                 mBarState != StatusBarState.KEYGUARD && (!mQsExpanded
                         || mQsExpansionFromOverscroll));
         updateEmptyShadeView();
-        mQsNavbarScrim.setVisibility(mBarState == StatusBarState.SHADE && mQsExpanded
-                && !mStackScrollerOverscrolling && mQsScrimEnabled
-                ? View.VISIBLE
-                : View.INVISIBLE);
+        handleDismissAllVisibility();
         if (mKeyguardUserSwitcher != null && mQsExpanded && !mStackScrollerOverscrolling) {
             mKeyguardUserSwitcher.hideIfNotSimple(true /* animate */);
         }
@@ -1828,7 +1835,6 @@ public class NotificationPanelView extends PanelView implements
         }
         if (mBarState == StatusBarState.SHADE && mQsExpanded
                 && !mStackScrollerOverscrolling && mQsScrimEnabled) {
-            mQsNavbarScrim.setAlpha(getQsExpansionFraction());
         }
 
         if (mAccessibilityManager.isEnabled()) {
@@ -1851,6 +1857,7 @@ public class NotificationPanelView extends PanelView implements
 
     protected void updateQsExpansion() {
         if (mQs == null) return;
+        handleDismissAllVisibility();
         float qsExpansionFraction = getQsExpansionFraction();
         mQs.setQsExpansion(qsExpansionFraction, getHeaderTranslation());
         mNotificationStackScroller.setQsExpansionFraction(qsExpansionFraction);
@@ -3026,6 +3033,10 @@ public class NotificationPanelView extends PanelView implements
     }
 
     private void setClosingWithAlphaFadeout(boolean closing) {
+        if (closing)
+            hideDismissAnimate();
+        else
+            handleDismissAllVisibility();
         mClosingWithAlphaFadeOut = closing;
         mNotificationStackScroller.forceNoOverlappingRendering(closing);
     }
@@ -3505,6 +3516,10 @@ public class NotificationPanelView extends PanelView implements
         boolean showEmptyShadeView =
                 mBarState != StatusBarState.KEYGUARD &&
                         mEntryManager.getNotificationData().getActiveNotifications().size() == 0;
+        if (showEmptyShadeView)
+            hideDismissAnimate();
+        else
+            handleDismissAllVisibility();
         showEmptyShadeView(showEmptyShadeView);
     }
 
@@ -3578,4 +3593,43 @@ public class NotificationPanelView extends PanelView implements
         mOnReinflationListener = onReinflationListener;
     }
 
+    public void handleDismissAllVisibility() {
+        if (mBarState == StatusBarState.KEYGUARD || mQsExpanded || mClosingWithAlphaFadeOut || isFullyCollapsed()) {
+            hideDismissAnimate();
+        } else {
+            if (hasActiveClearableNotifications() && getExpandedFraction() > 0.6) {
+                if (getExpandedFraction() == 1) {
+                    showDismissAnimate();
+                }
+            } else {
+                hideDismissAnimate();
+            }
+        }
+    }
+
+    public void hideDismissAnimate() {
+        mDismissShow = false;
+        Animation anim = AnimationUtils.loadAnimation(mContext,
+                  R.anim.dismiss_all_hide);
+        anim.setAnimationListener(new AnimationListener() {
+            public void onAnimationStart(Animation animation) {
+            }
+            public void onAnimationEnd(Animation animation) {
+                mDismissAllButton.setVisibility(View.INVISIBLE);
+            }
+            public void onAnimationRepeat(Animation animation) {
+            }
+        });
+        mDismissAllButton.startAnimation(anim);
+    }
+
+    public void showDismissAnimate() {
+        if (!mDismissShow) {
+            mDismissShow = true;
+            Animation anim = AnimationUtils.loadAnimation(mContext,
+                      R.anim.dismiss_all_show);
+            mDismissAllButton.setVisibility(View.VISIBLE);
+            mDismissAllButton.startAnimation(anim);
+        }
+    }
 }
