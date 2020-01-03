@@ -27,4 +27,10 @@
     <dimen name="screenrecord_status_icon_radius">5dp</dimen>
     <dimen name="screenrecord_status_text_size">14sp</dimen>
 
+    <!-- Custom cutout overlay view sizes -->
+    <dimen name="config_customCutoutTopWidth">0.0px</dimen>
+    <dimen name="config_customCutoutTopHeight">0.0px</dimen>
+    <dimen name="config_customCutoutBottomWidth">0.0px</dimen>
+    <dimen name="config_customCutoutBottomHeight">0.0px</dimen>
+
 </resources>
