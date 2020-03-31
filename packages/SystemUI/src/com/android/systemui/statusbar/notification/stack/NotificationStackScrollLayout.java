@@ -5445,8 +5445,8 @@ public class NotificationStackScrollLayout extends ViewGroup implements ScrollAd
     }
 
     @ShadeViewRefactor(RefactorComponent.SHADE_VIEW)
-    public void manageNotifications(View v) {
-        Intent intent = new Intent(Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS);
+    public void manageNotificationsHistory(View v) {
+        Intent intent = new Intent(Settings.ACTION_NOTIFICATION_HISTORY);
         mStatusBar.startActivity(intent, true, true, Intent.FLAG_ACTIVITY_SINGLE_TOP);
     }
 
@@ -5600,7 +5600,7 @@ public class NotificationStackScrollLayout extends ViewGroup implements ScrollAd
             mMetricsLogger.action(MetricsEvent.ACTION_DISMISS_ALL_NOTES);
             clearNotifications(ROWS_ALL, true /* closeShade */);
         });
-        footerView.setManageButtonClickListener(this::manageNotifications);
+        footerView.setManageButtonClickListener(this::manageNotificationsHistory);
         setFooterView(footerView);
     }
 
