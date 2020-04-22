@@ -54,6 +54,7 @@ import android.widget.Space;
 import android.widget.TextView;
 
 import androidx.annotation.VisibleForTesting;
+import androidx.core.graphics.ColorUtils;
 
 import com.android.internal.config.sysui.SystemUiDeviceConfigFlags;
 import com.android.settingslib.Utils;
@@ -223,17 +224,10 @@ public class QuickStatusBarHeader extends RelativeLayout implements
         mPrivacyChip.setOnClickListener(this::onClick);
         mCarrierGroup = findViewById(R.id.carrier_group);
 
-
-        updateResources();
-
-        Rect tintArea = new Rect(0, 0, 0, 0);
         int colorForeground = Utils.getColorAttrDefaultColor(getContext(),
                 android.R.attr.colorForeground);
         float intensity = getColorIntensity(colorForeground);
         int fillColor = mDualToneHandler.getSingleColor(intensity);
-
-        // Set light text on the header icons because they will always be on a black background
-        applyDarkness(R.id.clock, tintArea, 0, DarkIconDispatcher.DEFAULT_ICON_TINT);
 
         // Set the correct tint for the status icons so they contrast
         mIconManager.setTint(fillColor);
@@ -254,6 +248,8 @@ public class QuickStatusBarHeader extends RelativeLayout implements
         mBatteryRemainingIcon.setPercentShowMode(BatteryMeterView.MODE_ESTIMATE);
         mRingerModeTextView.setSelected(true);
         mNextAlarmTextView.setSelected(true);
+
+        updateResources();
 
         mPermissionsHubEnabled = PrivacyItemControllerKt.isPermissionsHubEnabled();
         // Change the ignored slots when DeviceConfig flag changes
@@ -287,7 +283,7 @@ public class QuickStatusBarHeader extends RelativeLayout implements
     }
 
     private void setChipVisibility(boolean chipVisible) {
-        if (chipVisible && mPermissionsHubEnabled) {
+        /*if (chipVisible && mPermissionsHubEnabled) {
             mPrivacyChip.setVisibility(View.VISIBLE);
             // Makes sure that the chip is logged as viewed at most once each time QS is opened
             // mListening makes sure that the callback didn't return after the user closed QS
@@ -296,9 +292,9 @@ public class QuickStatusBarHeader extends RelativeLayout implements
                 StatsLog.write(StatsLog.PRIVACY_INDICATORS_INTERACTED,
                         StatsLog.PRIVACY_INDICATORS_INTERACTED__TYPE__CHIP_VIEWED);
             }
-        } else {
+        } else {*/
             mPrivacyChip.setVisibility(View.GONE);
-        }
+        //}
     }
 
     private boolean updateRingerStatus() {
@@ -354,11 +350,6 @@ public class QuickStatusBarHeader extends RelativeLayout implements
     protected void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         updateResources();
-
-        // Update color schemes in landscape to use wallpaperTextColor
-        boolean shouldUseWallpaperTextColor =
-                newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE;
-        mClockView.useWallpaperTextColor(shouldUseWallpaperTextColor);
     }
 
     @Override
@@ -404,6 +395,16 @@ public class QuickStatusBarHeader extends RelativeLayout implements
         }
 
         setLayoutParams(lp);
+
+	Rect tintArea = new Rect();
+	mClockView.getGlobalVisibleRect(tintArea);
+        int colorForeground = Utils.getColorAttrDefaultColor(getContext(),
+                android.R.attr.colorForeground);
+        float intensity = getColorIntensity(colorForeground);
+        int fillColor = mDualToneHandler.getSingleColor(intensity);
+
+        // Set light text on the header icons because they will always be on a black background
+        applyDarkness(R.id.clock, tintArea, intensity, fillColor);
 
         updateStatusIconAlphaAnimator();
         updateHeaderTextContainerAlphaAnimator();
@@ -621,6 +622,7 @@ public class QuickStatusBarHeader extends RelativeLayout implements
         float intensity = getColorIntensity(colorForeground);
         int fillColor = mDualToneHandler.getSingleColor(intensity);
         mBatteryRemainingIcon.onDarkChanged(tintArea, intensity, fillColor);
+        //mClockView.onDarkChanged(tintArea, intensity, fillColor);
     }
 
     public void setCallback(Callback qsPanelCallback) {
@@ -639,7 +641,8 @@ public class QuickStatusBarHeader extends RelativeLayout implements
     }
 
     public static float getColorIntensity(@ColorInt int color) {
-        return color == Color.WHITE ? 0 : 1;
+        double luminance = ColorUtils.calculateLuminance(color);
+        return luminance > 0.5 ? 0 : 1;
     }
 
     public void setMargins(int sideMargins) {
